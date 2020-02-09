@@ -1,10 +1,15 @@
 #include <benchmark/benchmark.h>
 
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/random_device.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstdio>
-#include <random>
+#include <cstring>
+#include <numeric>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -18,6 +23,8 @@ static constexpr const int g_max_size(16384);
 #define dbg_printf(...) do {} while (false)
 #endif
 
+static int g_seed;
+
 std::vector<std::vector<int>> random_matrix(int s)
 {
   static std::unordered_map<int, std::vector<std::vector<int>>> cache;
@@ -27,11 +34,8 @@ std::vector<std::vector<int>> random_matrix(int s)
   if (it != cache.end())
     return it->second;
   
-  std::random_device rd;
-  static int seed(rd());
-  
-  std::mt19937 gen(seed);
-  std::uniform_int_distribution<int> rg;
+  boost::random::mt19937 gen(g_seed);
+  boost::random::uniform_int_distribution<int> rg;
   
   const int row_size(s);
   const int row_count(s);
@@ -838,6 +842,48 @@ int matrix_elements_sum_per_column_branchless
   return r;
 }
 
+int matrix_elements_sum_column_major(const std::vector<std::vector<int>>& m)
+{
+  int r(0);
+
+  for (const std::vector<int>& column : m)
+    for (int v : column)
+      {
+        if (v == 0)
+          break;
+
+        r += v;
+      }
+  
+  return r;
+}
+
+void row_major_to_column_major(std::vector<std::vector<int>>& matrix)
+{
+  const int n(matrix.size());
+
+  for (int y(1); y != n; ++y)
+    for (int x(0); x != y; ++x)
+      std::swap(matrix[y][x], matrix[x][y]);
+}
+
+int matrix_elements_sum_mixed(const std::vector<std::vector<int>>& m)
+{
+  const int n(m.size());
+  
+  if (n < 64)
+    {
+      std::vector<std::vector<int>> column_major(m);
+      row_major_to_column_major(column_major);
+      return matrix_elements_sum_column_major(column_major);
+    }
+
+  if (n < 2048)
+    return matrix_elements_sum_best_ratings(m);
+  
+  return matrix_elements_sum_indices(m);
+}
+
 template<typename F>
 void run_test(benchmark::State& state, F f)
 {
@@ -857,11 +903,11 @@ void run_test(benchmark::State& state, F f)
 
 //declare_test(branchless);
 //declare_test(branchless_vector_of_bool);
-declare_test(branchless_return_early);
+//declare_test(branchless_return_early);
 
 //declare_test(branches);
 //declare_test(branches_vector_of_bool);
-declare_test(branches_range);
+//declare_test(branches_range);
 //declare_test(branches_range_return_early);
 
 declare_test(indices);
@@ -878,42 +924,42 @@ declare_test(indices);
 
 //declare_test(per_column_branchless);
 
+//declare_test(mixed);
+
 declare_test(best_ratings);
 
-int matrix_elements_sum_column_major(const std::vector<std::vector<int>>& m)
-{
-  int r(0);
-
-  for (const std::vector<int>& column : m)
-    for (int v : column)
-      {
-        if (v == 0)
-          break;
-
-        r += v;
-      }
-  
-  return r;
-}
-
+#if 1
 void column_major(benchmark::State& state)
 {
   auto matrix(random_matrix(state.range(0)));
 
-  const int n(matrix.size());
-
-  for (int y(1); y != n; ++y)
-    for (int x(0); x != y; ++x)
-      std::swap(matrix[y][x], matrix[x][y]);
+  row_major_to_column_major(matrix);
       
   for (auto _ : state)
     benchmark::DoNotOptimize(matrix_elements_sum_column_major(matrix));
 }
 
 BENCHMARK(column_major)->RangeMultiplier(2)->Range(2, g_max_size);
+#endif
 
 int main(int argc, char** argv)
 {
+  if (argc == 1)
+    {
+      boost::random::random_device rd;
+      g_seed = rd();
+    }
+  else
+    {
+      if ((argc != 2) || (std::strcmp(argv[1], "--help") == 0))
+        {
+          printf("Usage: %s SEED\n", argv[0]);
+          return 0;
+        }
+
+      g_seed = std::stoi(argv[1]);
+    }
+  
   benchmark::Initialize(&argc, argv);
 
   std::iota(g_indices.begin(), g_indices.end(), 0);

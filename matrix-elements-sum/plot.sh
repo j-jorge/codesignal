@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ -z "$1" ] || [ "$1" = "--help" ]
+then
+    printf 'Usage: %s raw-result-file\n' "$0"
+    exit
+fi
+
 clean="$(echo "$1" | sed 's/raw-/clean-/')"
 
 ./raw-to-plot.py "$1" > "$clean"
