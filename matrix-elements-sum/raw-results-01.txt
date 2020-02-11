@@ -1,3 +1,4 @@
+# Title: Vector of Bool VS Branchless VS Branches VS Column Scan
 branchless/2                          30.8 ns         30.8 ns     24134016
 branchless/4                          48.4 ns         48.4 ns     13242053
 branchless/8                           115 ns          115 ns      5677287
@@ -12,20 +13,6 @@ branchless/2048                    5825193 ns      5822436 ns          124
 branchless/4096                   22795436 ns     22791085 ns           30
 branchless/8192                   93252437 ns     93232483 ns            8
 branchless/16384                 363104956 ns    363083408 ns            2
-branchless_vector_of_bool/2           36.5 ns         36.5 ns     19332912
-branchless_vector_of_bool/4           63.8 ns         63.8 ns     10167888
-branchless_vector_of_bool/8            179 ns          179 ns      3831097
-branchless_vector_of_bool/16           646 ns          646 ns      1017903
-branchless_vector_of_bool/32          2519 ns         2519 ns       276645
-branchless_vector_of_bool/64         10890 ns        10889 ns        64130
-branchless_vector_of_bool/128        68833 ns        68830 ns        10229
-branchless_vector_of_bool/256       268547 ns       268544 ns         2585
-branchless_vector_of_bool/512      1076643 ns      1076451 ns          646
-branchless_vector_of_bool/1024     4123752 ns      4123677 ns          170
-branchless_vector_of_bool/2048    16156914 ns     16154647 ns           43
-branchless_vector_of_bool/4096    63716107 ns     63714660 ns           10
-branchless_vector_of_bool/8192   253627809 ns    253619994 ns            3
-branchless_vector_of_bool/16384 1012740428 ns   1012673357 ns            1
 branches/2                            30.6 ns         30.6 ns     23026567
 branches/4                            45.1 ns         45.1 ns     15498730
 branches/8                            97.7 ns         97.6 ns      7082994
@@ -40,6 +27,20 @@ branches/2048                      3216218 ns      3214236 ns          221
 branches/4096                     12255959 ns     12254596 ns           57
 branches/8192                     47778972 ns     47778772 ns           15
 branches/16384                   185408857 ns    185405471 ns            4
+branchless_vector_of_bool/2           36.5 ns         36.5 ns     19332912
+branchless_vector_of_bool/4           63.8 ns         63.8 ns     10167888
+branchless_vector_of_bool/8            179 ns          179 ns      3831097
+branchless_vector_of_bool/16           646 ns          646 ns      1017903
+branchless_vector_of_bool/32          2519 ns         2519 ns       276645
+branchless_vector_of_bool/64         10890 ns        10889 ns        64130
+branchless_vector_of_bool/128        68833 ns        68830 ns        10229
+branchless_vector_of_bool/256       268547 ns       268544 ns         2585
+branchless_vector_of_bool/512      1076643 ns      1076451 ns          646
+branchless_vector_of_bool/1024     4123752 ns      4123677 ns          170
+branchless_vector_of_bool/2048    16156914 ns     16154647 ns           43
+branchless_vector_of_bool/4096    63716107 ns     63714660 ns           10
+branchless_vector_of_bool/8192   253627809 ns    253619994 ns            3
+branchless_vector_of_bool/16384 1012740428 ns   1012673357 ns            1
 branches_vector_of_bool/2             35.5 ns         35.5 ns     20404175
 branches_vector_of_bool/4             55.1 ns         55.1 ns     12150224
 branches_vector_of_bool/8              118 ns          118 ns      5907082
