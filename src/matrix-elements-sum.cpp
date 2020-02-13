@@ -17,7 +17,7 @@
 
 static constexpr const int g_max_size(16384);
 
-#ifdef _DEBUG
+#ifndef NDEBUG
 #define dbg_printf(...) printf(__VA_ARGS__)
 #else
 #define dbg_printf(...) do {} while (false)
@@ -55,7 +55,7 @@ std::vector<std::vector<int>> random_matrix(int s)
           row[x] = 0;
     }
 
-#ifdef _DEBUG
+#ifndef NDEBUG
   if (s <= 128)
     for (int y(0); y != row_count; ++y)
       {
@@ -71,10 +71,27 @@ std::vector<std::vector<int>> random_matrix(int s)
   return matrix;
 }
 
+std::vector<int> random_contiguous_matrix(int s)
+{
+  auto value_count = s * s;
+  std::vector<int> matrix(value_count);
+  auto it = matrix.begin();
+
+  for(const auto& row: random_matrix(s))
+    {
+    for(const auto& value: row)
+        {
+            *it++ = value;
+        }
+    }
+
+  return matrix;
+}
+
 int matrix_elements_sum_branchless(const std::vector<std::vector<int>>& matrix)
 {
   const int row_size(matrix[0].size());
-  std::vector<char> usable_column(row_size, 1);
+  std::vector<int> usable_column(row_size, 1);
     
   int result(0);
 
@@ -89,6 +106,24 @@ int matrix_elements_sum_branchless(const std::vector<std::vector<int>>& matrix)
   return result;
 }
 
+int matrix_elements_sum_branchless_2
+(const std::vector<std::vector<int>>& matrix)
+{
+  const int row_size(matrix[0].size());
+  std::vector<int> usable_column(row_size, -1);
+    
+  int result(0);
+
+  for (const std::vector<int>& row : matrix)
+    for (int i(0); i != row_size; ++i)
+      {
+        const int v(row[i]);
+        result += v & usable_column[i];
+        usable_column[i] &= v ? -1 : 0;
+      }
+    
+  return result;
+}
 int matrix_elements_sum_branchless_return_early
 (const std::vector<std::vector<int>>& matrix)
 {
@@ -108,6 +143,35 @@ int matrix_elements_sum_branchless_return_early
           result += v * usable;
           remaining -= (usable == 1) & (v == 0);
           usable_column[i] &= char(v != 0);
+        }
+
+      if (remaining == 0)
+        return result;
+    }
+    
+  return result;
+}
+
+
+int matrix_elements_sum_branchless_2_return_early
+(const std::vector<std::vector<int>>& matrix)
+{
+  const int row_size(matrix[0].size());
+  std::vector<int> usable_column(row_size, -1);
+  int remaining(row_size);
+  
+  int result(0);
+    
+  for (const std::vector<int>& row : matrix)
+    {
+      for (int i(0); i != row_size; ++i)
+        {
+          const int v(row[i]);
+          const int usable(usable_column[i]);
+          
+          result += v & usable;
+          remaining -= (usable != 0) & (v == 0);
+          usable_column[i] &= v ? -1 : 0;
         }
 
       if (remaining == 0)
@@ -290,6 +354,79 @@ int matrix_elements_sum_indices(const std::vector<std::vector<int>>& matrix)
             ++it;
           }
       }
+    
+  return result;
+}
+
+int matrix_elements_sum_indices_branchless
+(const std::vector<std::vector<int>>& matrix)
+{
+  const int row_size(matrix[0].size());
+  std::vector<int> usable_columns(row_size);
+
+  const auto usable_columns_begin(usable_columns.begin());
+  auto usable_columns_end(usable_columns.end());
+
+  std::iota(usable_columns_begin, usable_columns_end, 0);
+
+  int remaining_count(row_size);
+  int result(0);
+    
+  for (const std::vector<int>& row : matrix)
+    {
+      for (auto it(usable_columns_begin); it != usable_columns_end; )
+        {
+          const int i(*it);
+          const int v(row[i]);
+          result += v;
+
+          const int keep_mask((v == 0) ? 0 : -1);
+
+          usable_columns_end += ~keep_mask;
+
+          const int distance_to_last(usable_columns_end - it);
+          const auto new_i_it(it + (distance_to_last & ~keep_mask));
+          *it = *new_i_it;
+          
+          it += -keep_mask;
+        }
+    }
+    
+  return result;
+}
+
+int matrix_elements_sum_indices_almost_branchless
+(const std::vector<std::vector<int>>& matrix)
+{
+  const int row_size(matrix[0].size());
+  std::vector<int> usable_columns(row_size);
+
+  const auto usable_columns_begin(usable_columns.begin());
+  auto usable_columns_end(usable_columns.end());
+
+  std::iota(usable_columns_begin, usable_columns_end, 0);
+
+  int remaining_count(row_size);
+  int result(0);
+    
+  for (const std::vector<int>& row : matrix)
+    {
+      for (auto it(usable_columns_begin); it != usable_columns_end; )
+        {
+          const int i(*it);
+          const int v(row[i]);
+          result += v;
+
+          const int keep_mask((v == 0) ? 0 : -1);
+
+          usable_columns_end += ~keep_mask;
+
+          if (~keep_mask)
+            *it = *usable_columns_end;
+          
+          it += -keep_mask;
+        }
+    }
     
   return result;
 }
@@ -563,23 +700,10 @@ int matrix_elements_sum_indices_4_by_4
   int r(0);
   for (const std::vector<int>& row : matrix)
     {
-      dbg_printf("--\nrow %d\n", r);
-
-      auto i(usable_columns_begin);
-      for (; i != usable_columns_end; ++i)
-        dbg_printf(" %d", *i);
-      dbg_printf(" |");
-      for (; i != usable_columns.end(); ++i)
-        dbg_printf(" %d", *i);
-      dbg_printf("\n");
       auto it(usable_columns_begin);
 
-      dbg_printf("%d columns\n", int(usable_columns_end - usable_columns_begin));
-      
       while (it + 4 <= usable_columns_end)
       {
-        dbg_printf("at %d\n", int(it - usable_columns_begin));
-        
         const auto it_1(it + 1);
         const auto it_2(it + 2);
         const auto it_3(it + 3);
@@ -636,11 +760,6 @@ int matrix_elements_sum_indices_4_by_4
           }
       }
       
-      dbg_printf
-        ("at %d on %d\n",
-         int(it - usable_columns_begin),
-         int(usable_columns_end - usable_columns_begin));
-      
       while (it < usable_columns_end)
         {
           const int i(*it);
@@ -658,7 +777,6 @@ int matrix_elements_sum_indices_4_by_4
             }
         }
       
-      dbg_printf("4 by 4 %d: %d\n", r, result);
       ++r;
     }
   
@@ -884,6 +1002,59 @@ int matrix_elements_sum_mixed(const std::vector<std::vector<int>>& m)
   return matrix_elements_sum_indices(m);
 }
 
+int contiguous_matrix_elements_sum_best_ratings(const std::vector<int>& m, int dim)
+{
+  int r(0);
+  
+  for (int j=0; j<dim; j++)
+    for (int i=j; i<m.size(); i+=dim)
+      {
+        if (m[i]==0)
+          break;
+        r += m[i];
+      }
+  
+  return r;
+}
+
+int contiguous_matrix_elements_sum_branchless(const std::vector<int>& m, int dim)
+{
+  std::vector<int> usable_column(dim, 1);
+
+  int result(0);
+
+  for (int i=0; i<m.size(); i+=dim)
+    {
+    for (int j=0; j<dim; j++)
+      {
+        const int v(m[i+j]);
+        result += v * usable_column[j];
+        usable_column[j] &= char(v != 0);
+      }
+    }
+
+  return result;
+}
+
+int contiguous_matrix_elements_sum_branchless_2(const std::vector<int>& m, int dim)
+{
+  std::vector<int> usable_column(dim, -1);
+
+  int result(0);
+
+  for (int i=0; i<m.size(); i+=dim)
+    {
+    for (int j=0; j<dim; j++)
+      {
+        const int v(m[i+j]);
+        result += v & usable_column[j];
+        usable_column[j] &= v ? -1 : 0;
+      }
+    }
+
+  return result;
+}
+
 template<typename F>
 void run_test(benchmark::State& state, F f)
 {
@@ -891,6 +1062,16 @@ void run_test(benchmark::State& state, F f)
 
   for (auto _ : state)
     benchmark::DoNotOptimize(f(matrix));
+}
+
+template<typename F>
+void run_test_contigous(benchmark::State& state, F f)
+{
+  int dim = state.range(0);
+  const auto matrix(random_contiguous_matrix(dim));
+
+  for (auto _ : state)
+    benchmark::DoNotOptimize(f(matrix, dim));
 }
 
 #define declare_test(name)                                      \
@@ -901,9 +1082,24 @@ void run_test(benchmark::State& state, F f)
                                                                 \
   BENCHMARK(name)->RangeMultiplier(2)->Range(2, g_max_size)
 
-//declare_test(branchless);
+#define declare_contiguous_test(name)                                     \
+  static void contiguous_##name(benchmark::State& state)                  \
+  {                                                                       \
+    run_test_contigous(state, &contiguous_matrix_elements_sum_ ## name);  \
+  }                                                                       \
+                                                                          \
+  BENCHMARK(contiguous_ ## name)->RangeMultiplier(2)->Range(2, g_max_size)
+
+declare_test(branchless);
+//declare_contiguous_test(branchless);
+
+declare_test(branchless_2);
+//declare_contiguous_test(branchless_2);
+
+
 //declare_test(branchless_vector_of_bool);
 //declare_test(branchless_return_early);
+//declare_test(branchless_2_return_early);
 
 //declare_test(branches);
 //declare_test(branches_vector_of_bool);
@@ -911,6 +1107,8 @@ void run_test(benchmark::State& state, F f)
 //declare_test(branches_range_return_early);
 
 declare_test(indices);
+declare_test(indices_branchless);
+declare_test(indices_almost_branchless);
 //declare_test(indices_sort);
 //declare_test(indices_erase);
 //declare_test(indices_set);
@@ -927,8 +1125,9 @@ declare_test(indices);
 //declare_test(mixed);
 
 declare_test(best_ratings);
+//declare_contiguous_test(best_ratings);
 
-#if 1
+#if 0
 void column_major(benchmark::State& state)
 {
   auto matrix(random_matrix(state.range(0)));
@@ -940,6 +1139,64 @@ void column_major(benchmark::State& state)
 }
 
 BENCHMARK(column_major)->RangeMultiplier(2)->Range(2, g_max_size);
+#endif
+
+#if 1
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/assignment.hpp>
+#include <boost/numeric/ublas/io.hpp>
+
+boost::numeric::ublas::matrix<int> row_major_to_boost_ublas
+(const std::vector<std::vector<int>>& matrix)
+{
+  const int size(matrix.size());
+  boost::numeric::ublas::matrix<int> result(size, size);
+
+  for (int j(0); j != size; ++j)
+    for (int i(0); i != size; ++i)
+      result(j, i) = matrix[j][i];
+
+  return result;
+}
+
+int matrix_elements_sum_boost_ublas
+(boost::numeric::ublas::matrix<int>& matrix)
+{
+  int sum(0);
+  int size(matrix.size1());
+  
+  for (unsigned i = 0; i != size; ++i)
+    sum += matrix(0, i);
+  
+  for (unsigned j = 1; j < size; ++j)
+    for (unsigned i = 0; i != size; ++i)
+      if( matrix(j-1, i) )
+        sum += matrix(j, i);
+      else
+        matrix(j, i) = 0;
+
+  return sum;
+}
+
+void boost_ublas(benchmark::State& state)
+{
+  const auto matrix(random_matrix(state.range(0)));
+
+  const boost::numeric::ublas::matrix<int> m(row_major_to_boost_ublas(matrix));
+  const auto end(std::end(state));
+
+  for (auto it(std::begin(state)); it != end; ++it)
+    {
+      boost::numeric::ublas::matrix<int> matrix_copy(m);
+      
+      {
+        auto _(*it);
+        benchmark::DoNotOptimize(matrix_elements_sum_boost_ublas(matrix_copy));
+      }
+    }
+}
+
+BENCHMARK(boost_ublas)->RangeMultiplier(2)->Range(2, g_max_size);
 #endif
 
 int main(int argc, char** argv)
@@ -957,6 +1214,25 @@ int main(int argc, char** argv)
           return 0;
         }
 
+      if (std::strcmp(argv[1], "--test") == 0)
+        {
+          g_seed = 1234;
+          const int size(16);
+          auto matrix(random_matrix(size));
+
+          printf("branchless %d\n", matrix_elements_sum_branchless(matrix));
+          printf("branchless_2 %d\n", matrix_elements_sum_branchless_2(matrix));
+          printf("indices %d\n", matrix_elements_sum_indices(matrix));
+          printf
+            ("contiguous branchless %d\n",
+             contiguous_matrix_elements_sum_branchless
+             (random_contiguous_matrix(size), size));
+          printf
+            ("indices_branchless %d\n",
+             matrix_elements_sum_indices_branchless(matrix));
+          
+          return 0;
+        }
       g_seed = std::stoi(argv[1]);
     }
   
